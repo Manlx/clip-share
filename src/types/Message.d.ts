@@ -1,5 +1,7 @@
 declare namespace MessageResponse {
 
+  type MessageTypeConstant = 'messageType'
+
   type HostState = {
     messageType: "HostState",
     data: {
@@ -7,25 +9,67 @@ declare namespace MessageResponse {
     }
   }
 
-  type HostState2 = {
-    messageType: "HostState2",
-    data: string
+  type CreateSession = {
+    messageType: "CreateSession"
+  }
+
+  type CreateSessionResponse = {
+    messageType: "CreateSessionResponse",
+    data: {
+      sessionID: string,
+      creationOutCome: 'Successful' | 'AlreadyHostOfSession'
+    }
+  }
+
+  type CloseSession = {
+    messageType: "CloseSession"
+  }
+
+  type SessionClosedResponse = {
+    messageType: "SessionClosedResponse"
+  }
+
+  type JoinSession = {
+    messageType: "JoinSession",
+    data: {
+      sessionID: string
+    }
   }
   
-  type Response = HostState | HostState2;
-
-  type MessageTypes = Response['messageType']
-
-  type MessageTypeToResponse = {
-    [key in Response as key['messageType']]: key
+  type JoinSessionResponse = {
+    messageType: 'JoinSessionResponse',
+    data:{
+      joinOutcome: 'Successful' | 'AlreadyInOtherSession' | 'SessionNotFound'
+    }
   }
 
+  type GetSessionId = {
+    messageType: "GetSessionId",
+  }
+
+  type SessionIdResponse = {
+    messageType: "SessionIdResponse",
+    data: {
+      sessionID: string
+    }
+  }
+  
+  type Response = HostState | CreateSession | CreateSessionResponse | CloseSession | SessionClosedResponse | JoinSession | JoinSessionResponse | GetSessionId | SessionIdResponse;
+
+  type MessageTypes = Response[MessageTypeConstant]
+
+  type MessageTypeToResponse = {
+    [key in Response as key[MessageTypeConstant]]: key
+  }
+
+  type CustomProofReturn<DataType> = {isValid: false, proofData: undefined} | {isValid: true, proofData: DataType}
+
   type MessageTypeToProof = {
-    [key in Response as key['messageType']]: ((data: unknown) => [true, key] | [false, undefined])
+    [key in Response as key[MessageTypeConstant]]: ((data: unknown) => CustomProofReturn<Pick<key,MessageTypeConstant>>)
   }
 
   type MessageTypeToStringLit = {
-    [key in Response as key['messageType']]: key['messageType']
+    [key in Response as key[MessageTypeConstant]]: key[MessageTypeConstant]
   }
 
 }
