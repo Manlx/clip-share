@@ -1,4 +1,4 @@
-import { type WebSocket } from "ws";
+import { WebSocket as NodeWebSocket } from "ws";
 
 export const MessageTypeToStringLit: MessageResponse.MessageTypeToStringLit = {
   HostState: 'HostState',
@@ -10,25 +10,6 @@ export const MessageTypeToStringLit: MessageResponse.MessageTypeToStringLit = {
   SessionClosedResponse: 'SessionClosedResponse',
   JoinSessionResponse: 'JoinSessionResponse',
   JoinSession: 'JoinSession'
-}
-
-const IsObjectAble: (data: unknown) => boolean = (data: unknown): boolean => {
-
-  if (typeof data !== 'string') {
-
-    return false;
-  }
-
-  try {
-    
-    const res = JSON.parse(data);
-
-    return typeof res === 'object';
-
-  } catch (error) {
-    
-    return false;
-  }
 }
 
 type IsBasicMessageFnType = <MTN extends MessageResponse.MessageTypes>(data: unknown, messageTypeName: MTN) => MessageResponse.CustomProofReturn<{messageType: MTN}>
@@ -329,7 +310,7 @@ const ProofMap: MessageResponse.MessageTypeToProof = {
     if (
       !("creationOutCome" in HostStateData) || 
       typeof HostStateData['creationOutCome'] !== 'string' || 
-      (['AlreadyHostOfSession','Successful'] satisfies MessageResponse.CreateSessionResponse['data']['creationOutCome'][] as string[]).includes(HostStateData.creationOutCome)
+      !(['AlreadyHostOrMemberOfOtherSession','Successful'] satisfies MessageResponse.CreateSessionResponse['data']['creationOutCome'][] as string[]).includes(HostStateData.creationOutCome)
     ) {
 
       return {
@@ -384,7 +365,7 @@ const ProofMap: MessageResponse.MessageTypeToProof = {
     if (
       !("joinOutcome" in HostStateData) || 
       typeof HostStateData['joinOutcome'] !== 'string' || 
-      (['AlreadyInOtherSession','SessionNotFound','Successful'] satisfies MessageResponse.JoinSessionResponse['data']['joinOutcome'][] as string[]).includes(HostStateData.joinOutcome)
+      !(['AlreadyInOtherSession','SessionNotFound','Successful'] satisfies MessageResponse.JoinSessionResponse['data']['joinOutcome'][] as string[]).includes(HostStateData.joinOutcome)
     ) {
 
       return {
@@ -422,13 +403,13 @@ const ProofMap: MessageResponse.MessageTypeToProof = {
  */
 export class ManagedSocket {
 
-  socket: WebSocket | undefined;
+  socket: NodeWebSocket | WebSocket | undefined;
 
-  constructor(clientSocket: WebSocket){
+  constructor(clientSocket: NodeWebSocket | WebSocket){
 
     this.socket = clientSocket;
 
-    this.socket.on('close',()=>{
+    this.socket.addEventListener('close',()=>{
       this.socket = undefined;
     })
   }
@@ -440,25 +421,60 @@ export class ManagedSocket {
 
   listen<TM extends MessageResponse.MessageTypes>(messageType: TM, callback:(data: MessageResponse.MessageTypeToResponse[TM])=>void ) {
 
-    this.socket?.on('message',function(data){
+    if (this.socket === undefined) {
 
-      const proof = ProofMap[messageType]
-      
-      const res = proof(data);
+      return;
+    }
 
-      if (res.isValid){
-        // Using as because type checker can't accept my proof map
-        callback(res.proofData as MessageResponse.MessageTypeToResponse[TM])
+    if (this.socket instanceof WebSocket) {
+
+      this.socket.onmessage = function(messageEvent){
+
+        const proof = ProofMap[messageType]
+
+        const res = proof(messageEvent.data);
+
+        if (res.isValid){
+          // Using as because type checker can't accept my proof map
+          callback(res.proofData as MessageResponse.MessageTypeToResponse[TM])
+        }
       }
-    })
 
+      return;
+    }
+
+    this.socket.on('message',function(data){
+
+        const proof = ProofMap[messageType]
+
+        const res = proof(data.toString());
+
+        if (res.isValid){
+          // Using as because type checker can't accept my proof map
+          callback(res.proofData as MessageResponse.MessageTypeToResponse[TM])
+        }
+      })  
   }
   
   sendMessage<TM extends MessageResponse.MessageTypes>(messageType: TM, data: MessageResponse.MessageTypeToResponse[TM]) {
 
-    this.socket?.send(JSON.stringify({
-      messageType,
-      data: data
-    }))
+    if (this.socket === undefined) {
+
+      return;
+    }
+
+    if (data.messageType !== messageType) {
+
+      return;
+    }
+
+    if (this.socket instanceof WebSocket) {
+
+      this.socket.send(JSON.stringify(data))
+
+      return;
+    }
+
+    this.socket?.send(JSON.stringify(data))
   }
 }
