@@ -1,11 +1,18 @@
 import { type WebSocket } from "ws";
 
-const MessageTypeToStringLit: MessageResponse.MessageTypeToStringLit = {
+export const MessageTypeToStringLit: MessageResponse.MessageTypeToStringLit = {
   HostState: 'HostState',
-  HostState2: 'HostState2'
+  CloseSession: 'CloseSession',
+  CreateSession: 'CreateSession',
+  GetSessionId: 'GetSessionId',
+  SessionIdResponse: 'SessionIdResponse',
+  CreateSessionResponse: 'CreateSessionResponse',
+  SessionClosedResponse: 'SessionClosedResponse',
+  JoinSessionResponse: 'JoinSessionResponse',
+  JoinSession: 'JoinSession'
 }
 
-const IsObjectAble: (data: unknown) => data is object = (data: unknown): data is object => {
+const IsObjectAble: (data: unknown) => boolean = (data: unknown): boolean => {
 
   if (typeof data !== 'string') {
 
@@ -24,59 +31,390 @@ const IsObjectAble: (data: unknown) => data is object = (data: unknown): data is
   }
 }
 
+type IsBasicMessageFnType = <MTN extends MessageResponse.MessageTypes>(data: unknown, messageTypeName: MTN) => MessageResponse.CustomProofReturn<{messageType: MTN}>
+
+const IsBasicMessageType: IsBasicMessageFnType = 
+((data, messageTypeName) => {
+
+  if (typeof data !== "string") {
+
+    return {
+      proofData: undefined,
+      isValid: false
+    }
+  }
+
+  try {
+    const parsedObj = JSON.parse(data) as unknown;
+
+    if (typeof parsedObj !== "object") {
+
+      return {
+        proofData: undefined,
+        isValid: false
+      };
+    }
+
+    if (parsedObj === null) {
+
+      return {
+        proofData: undefined,
+        isValid: false
+      };
+    }
+
+    if (!("messageType" in parsedObj)){
+
+      return {
+        proofData: undefined,
+        isValid: false
+      }
+    }
+
+    if (typeof parsedObj.messageType !== 'string') {
+
+      return {
+        proofData: undefined,
+        isValid: false
+      }
+    }
+
+    if (parsedObj.messageType !== messageTypeName) {
+
+      return {
+        proofData: undefined,
+        isValid: false
+      }
+    }
+
+    return {
+      proofData: parsedObj,
+      isValid: true
+    }
+
+  } catch {
+    
+    return {
+      proofData: undefined,
+      isValid: false
+    };
+  }
+  
+  return {
+    data: undefined,
+    isValid: false
+  };
+}) as IsBasicMessageFnType
+
 // Move to constants or utils
 const ProofMap: MessageResponse.MessageTypeToProof = {
   HostState: (data: unknown)=>{
 
-    if (!IsObjectAble(data)) {
+    const baseValidation = IsBasicMessageType(data, 'HostState')
 
-      return [false, undefined];
+    if (!baseValidation.isValid) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
     }
 
-    if (typeof data !== 'string') {
+    if (!("data" in baseValidation.proofData)) {
 
-      return [false, undefined];
+      return {
+        isValid: false,
+        proofData: undefined
+      };
     }
 
-    const serializedData = JSON.parse(data) as unknown;
-
-    if (typeof serializedData !== "object") {
-      
-      return [false, undefined];
-    }
-
-    if (serializedData === null) {
-
-      return [false, undefined];
-    }
-
-    if (!("messageType" in serializedData) || serializedData['messageType'] !== MessageTypeToStringLit.HostState) {
-
-      return [false, undefined];
-    }
-
-    if (!("data" in serializedData)) {
-
-      return [false, undefined];
-    }
-
-    const HostStateData = serializedData['data'];
+    const HostStateData = baseValidation.proofData['data'];
 
     if (typeof HostStateData !== 'object' || HostStateData === null) {
 
-      return [false, undefined];
+      return {
+        isValid: false,
+        proofData: undefined
+      };
     }
 
     if (!("videoTime" in HostStateData) || typeof HostStateData['videoTime'] !== 'number') {
 
-      return [false, undefined];
+      return {
+        isValid: false,
+        proofData: undefined
+      };
     }
 
-    return [true,serializedData as MessageResponse.HostState];
+    return {
+      isValid: true,
+      proofData: baseValidation.proofData as MessageResponse.HostState
+    };
   },
-  HostState2: () => {
-    return [false, undefined]
-  }
+  CloseSession: (data: unknown)=>{
+
+    const baseValidation = IsBasicMessageType(data, 'CloseSession')
+
+    if (!baseValidation.isValid) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+    
+    return {
+      isValid: true,
+      proofData: baseValidation.proofData as MessageResponse.CloseSession
+    };
+  },
+  CreateSession: (data: unknown)=>{
+
+    const baseValidation = IsBasicMessageType(data, 'CreateSession')
+
+    if (!baseValidation.isValid) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    return {
+      isValid: true,
+      proofData: baseValidation.proofData as MessageResponse.CreateSession
+    };
+  },
+  GetSessionId: (data: unknown) => {
+
+    const baseValidation = IsBasicMessageType(data, 'GetSessionId')
+
+    if (!baseValidation.isValid) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    return {
+      isValid: true,
+      proofData: baseValidation.proofData as MessageResponse.GetSessionId
+    };
+  },
+  SessionIdResponse: (data: unknown) => {
+
+    const baseValidation = IsBasicMessageType(data, 'SessionIdResponse')
+
+    if (!baseValidation.isValid) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (!("data" in baseValidation.proofData)) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    const HostStateData = baseValidation.proofData['data'];
+
+    if (typeof HostStateData !== 'object' || HostStateData === null) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (!("sessionID" in HostStateData) || typeof HostStateData['sessionID'] !== 'string') {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    return {
+      isValid: true,
+      proofData: baseValidation.proofData as MessageResponse.SessionIdResponse
+    };
+  },
+  JoinSession: (data: unknown) => {
+
+    const baseValidation = IsBasicMessageType(data, 'JoinSession')
+
+    if (!baseValidation.isValid) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (!("data" in baseValidation.proofData)) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    const HostStateData = baseValidation.proofData['data'];
+
+    if (typeof HostStateData !== 'object' || HostStateData === null) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (!("sessionID" in HostStateData) || typeof HostStateData['sessionID'] !== 'string') {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    return {
+      isValid: true,
+      proofData: baseValidation.proofData as MessageResponse.JoinSession
+    };
+  },
+  CreateSessionResponse: (data: unknown) => {
+
+    const baseValidation = IsBasicMessageType(data, 'CreateSessionResponse')
+
+    if (!baseValidation.isValid) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (!("data" in baseValidation.proofData)) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    const HostStateData = baseValidation.proofData['data'];
+
+    if (typeof HostStateData !== 'object' || HostStateData === null) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (!("sessionID" in HostStateData) || typeof HostStateData['sessionID'] !== 'string') {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (
+      !("creationOutCome" in HostStateData) || 
+      typeof HostStateData['creationOutCome'] !== 'string' || 
+      (['AlreadyHostOfSession','Successful'] satisfies MessageResponse.CreateSessionResponse['data']['creationOutCome'][] as string[]).includes(HostStateData.creationOutCome)
+    ) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    return {
+      isValid: true,
+      proofData: baseValidation.proofData as MessageResponse.CreateSessionResponse
+    };
+  },
+  JoinSessionResponse: (data: unknown) => {
+
+    const baseValidation = IsBasicMessageType(data, 'JoinSessionResponse')
+
+    if (!baseValidation.isValid) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (!("data" in baseValidation.proofData)) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    const HostStateData = baseValidation.proofData['data'];
+
+    if (typeof HostStateData !== 'object' || HostStateData === null) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (!("sessionID" in HostStateData) || typeof HostStateData['sessionID'] !== 'string') {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    if (
+      !("joinOutcome" in HostStateData) || 
+      typeof HostStateData['joinOutcome'] !== 'string' || 
+      (['AlreadyInOtherSession','SessionNotFound','Successful'] satisfies MessageResponse.JoinSessionResponse['data']['joinOutcome'][] as string[]).includes(HostStateData.joinOutcome)
+    ) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    return {
+      isValid: true,
+      proofData: baseValidation.proofData as MessageResponse.JoinSessionResponse
+    };
+  },
+  SessionClosedResponse: (data: unknown) => {
+
+    const baseValidation = IsBasicMessageType(data, 'SessionClosedResponse')
+
+    if (!baseValidation.isValid) {
+
+      return {
+        isValid: false,
+        proofData: undefined
+      };
+    }
+
+    return {
+      isValid: true,
+      proofData: baseValidation.proofData as MessageResponse.SessionClosedResponse
+    };
+  },
 }
 
 /**
@@ -108,21 +446,19 @@ export class ManagedSocket {
       
       const res = proof(data);
 
-      if (res[0]){
+      if (res.isValid){
         // Using as because type checker can't accept my proof map
-        callback(res[1] as MessageResponse.MessageTypeToResponse[TM])
+        callback(res.proofData as MessageResponse.MessageTypeToResponse[TM])
       }
     })
 
   }
   
-  async RequestCurrentState(): Promise<MessageResponse.HostState>{
-  
-    return {
-      data: {
-        videoTime: 0
-      },
-      messageType: 'HostState'
-    }
+  sendMessage<TM extends MessageResponse.MessageTypes>(messageType: TM, data: MessageResponse.MessageTypeToResponse[TM]) {
+
+    this.socket?.send(JSON.stringify({
+      messageType,
+      data: data
+    }))
   }
 }
