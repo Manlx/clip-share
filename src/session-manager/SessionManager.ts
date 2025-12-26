@@ -1,10 +1,6 @@
 import { ManagedSocket, MessageTypeToStringLit } from "@SocketManger";
 import {WebSocketServer} from "ws";
 
-export class SessionManagerSingleton {
-
-}
-
 export class Session {
 
   Members: ManagedSocket[] = []
@@ -35,7 +31,7 @@ export class Session {
   }
 }
 
-export class SessionManager {
+export class SessionManagerSingleton {
 
   static WebSocketServer: WebSocketServer | undefined;
 
@@ -45,7 +41,7 @@ export class SessionManager {
 
   static CheckIfAlreadyHostOrMemberOfAnySession(managedSocket: ManagedSocket){
 
-    return Object.values(SessionManager.Sessions).some((currentEvalSession)=>{
+    return Object.values(SessionManagerSingleton.Sessions).some((currentEvalSession)=>{
 
       return currentEvalSession.IsMemberOrHost(managedSocket);
     })
@@ -53,22 +49,35 @@ export class SessionManager {
 
   static StartServer(){
 
-    SessionManager.WebSocketServer = new WebSocketServer({
+    SessionManagerSingleton.WebSocketServer = new WebSocketServer({
       port: 4000,
       autoPong: true,
-    },()=>{})
+    },()=>{
+      console.log("listening on ws://localhost:4000")
+    })
 
-    SessionManager.WebSocketServer.on('connection', (clientSocket)=>{
+    SessionManagerSingleton.WebSocketServer.on('connection', (clientSocket)=>{
 
       const newManagedSocket = new ManagedSocket(clientSocket)
       
-      SessionManager.ManagedSockets.push(newManagedSocket)
+      SessionManagerSingleton.ManagedSockets.push(newManagedSocket)
 
-      newManagedSocket.listen('CreateSession', () =>{
+      newManagedSocket.listen(MessageTypeToStringLit.CreateSession, () =>{
+
+        if (SessionManagerSingleton.CheckIfAlreadyHostOrMemberOfAnySession(newManagedSocket)){
+
+            newManagedSocket.sendMessage(MessageTypeToStringLit.CreateSessionResponse,{
+            messageType: MessageTypeToStringLit.CreateSessionResponse,
+            data: {
+              sessionID: '',
+              creationOutCome: 'AlreadyHostOrMemberOfOtherSession'
+            }
+          })
+        }
 
         const newSessionId = crypto.randomUUID();
 
-        SessionManager.Sessions[newSessionId] = new Session(newManagedSocket);
+        SessionManagerSingleton.Sessions[newSessionId] = new Session(newManagedSocket);
 
         newManagedSocket.sendMessage(MessageTypeToStringLit.CreateSessionResponse,{
           messageType: MessageTypeToStringLit.CreateSessionResponse,
@@ -79,12 +88,12 @@ export class SessionManager {
         })
       })
 
-      newManagedSocket.listen('JoinSession',(socketData)=>{
+      newManagedSocket.listen(MessageTypeToStringLit.JoinSession,(socketData)=>{
 
-        if (SessionManager.CheckIfAlreadyHostOrMemberOfAnySession(newManagedSocket)){
+        if (SessionManagerSingleton.CheckIfAlreadyHostOrMemberOfAnySession(newManagedSocket)){
 
-          newManagedSocket.sendMessage('JoinSessionResponse',{
-            messageType: 'JoinSessionResponse',
+          newManagedSocket.sendMessage(MessageTypeToStringLit.JoinSessionResponse,{
+            messageType: MessageTypeToStringLit.JoinSessionResponse,
             data: {
               joinOutcome: 'AlreadyInOtherSession'
             }
@@ -93,9 +102,9 @@ export class SessionManager {
           return;
         }
 
-        SessionManager.Sessions[socketData.data.sessionID].AddNewMember(newManagedSocket)
-        newManagedSocket.sendMessage('JoinSessionResponse',{
-          messageType: 'JoinSessionResponse',
+        SessionManagerSingleton.Sessions[socketData.data.sessionID].AddNewMember(newManagedSocket)
+        newManagedSocket.sendMessage(MessageTypeToStringLit.JoinSessionResponse,{
+          messageType: MessageTypeToStringLit.JoinSessionResponse,
           data: {
             joinOutcome: 'Successful'
           }
