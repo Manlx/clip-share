@@ -17,7 +17,7 @@ declare namespace MessageResponse {
     messageType: "CreateSessionResponse",
     data: {
       sessionID: string,
-      creationOutCome: 'Successful' | 'AlreadyHostOfSession'
+      creationOutCome: 'Successful' | 'AlreadyHostOrMemberOfOtherSession'
     }
   }
 
